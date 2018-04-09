@@ -18,7 +18,13 @@ import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.gms.tasks.Tasks
 import com.parse.Parse
+
+import kotlinx.coroutines.experimental.withContext
+import kotlinx.coroutines.experimental.runBlocking
+import kotlinx.coroutines.experimental.CommonPool
+import kotlinx.coroutines.experimental.async
 
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
@@ -61,76 +67,41 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
      */
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
-        showLocation()
-    }
 
-    fun showLocation(){
+        // Check location permissions
         if (ContextCompat.checkSelfPermission(this,
-                        Manifest.permission.ACCESS_COARSE_LOCATION)
+                        Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
-            Log.d("showLocation", "Doesn't have permission")
-            Log.d("showLocation", "Going to request permission")
+            Log.d("MapsActivity", "Doesn't have permission")
+            Log.d("MapsActivity", "Requesting fine location permission")
 
             // No explanation needed, we can request the permission.
             ActivityCompat.requestPermissions(this,
-                    arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION),
+                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
                     MY_PERMISSIONS_REQUEST_LOCATION)
 
         } else {
             // Permission has already been granted
-            var position: LatLng = notreDamePosition
-            Log.d("showLocation", "Position set to ND")
-
-            fusedLocationClient.lastLocation
-                    .addOnSuccessListener { location: Location? ->
-                        // Got last known location. In some rare situations this can be null.
-                        if (location != null) {
-                            position = LatLng(location.getLatitude(), location.getLongitude())
-                            Log.d("showLocation", "Position set to current location")
-                            Log.v("showLocation", position.toString())
-                            setCamera(position, findParkingZoom)
-                        }
-                    }
-                    .addOnFailureListener {
-                        val toast = Toast.makeText(this, "Unable to get current location", Toast.LENGTH_SHORT)
-                        toast.show()
-                    }
+            setup_map()
         }
     }
 
-    fun setCamera(location: LatLng, zoom: Float) {
-        mMap.addMarker(MarkerOptions().position(location).title("Notre Dame"))
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, zoom))
-    }
-
+    /**
+     * Callback when permissions are requested and user takes action
+     */
     override fun onRequestPermissionsResult(requestCode: Int,
                                             permissions: Array<String>, grantResults: IntArray) {
         when (requestCode) {
             MY_PERMISSIONS_REQUEST_LOCATION -> {
-                var position: LatLng = notreDamePosition
-                Log.d("onRequestPer", "Position set to ND")
-                Log.d("onRequestPer", "Permission granted")
                 // If request is cancelled, the result arrays are empty.
                 if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
                     // Permission granted
-                    // Get most recent location and set camera
-                    fusedLocationClient.lastLocation
-                            .addOnSuccessListener { location: Location? ->
-                                // Got last known location. In some rare situations this can be null.
-                                if (location != null) {
-                                    position = LatLng(location.getLatitude(), location.getLongitude())
-                                    Log.v("onRequestPer", position.toString())
-                                    setCamera(position, findParkingZoom)
-                                }
-                                Log.d("onRequestPer", "Position set to current location")
-                            }
-                            .addOnFailureListener {
-                                val toast = Toast.makeText(this, "Unable to get current location", Toast.LENGTH_SHORT)
-                                toast.show()
-                            }
+                    setup_map()
 
                 } else {
                     // Permission denied
+                    val toast = Toast.makeText(this, "Unable to get current location", Toast.LENGTH_SHORT)
+                    toast.show()
                 }
                 return
             }
@@ -139,6 +110,71 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 // Ignore all other requests.
             }
         }
+    }
+
+    /**
+     * Function to determine the user's location, move the map appropriately, and find parking around him
+     */
+    fun setup_map() = async {
+        // Get the user's location
+        var location: Location? = getLocation().await()
+
+        if(location == null) {
+            Log.d("MainActivity", "Location is null")
+            val toast = Toast.makeText(this@MapsActivity, "Unable to get current location", Toast.LENGTH_SHORT)
+            toast.show()
+            return@async
+        }
+
+        // Move camera to current location and place marker
+        Log.d("MainActivity", "Moving camera to user's location")
+        setCamera(LatLng(location.latitude, location.longitude), findParkingZoom, "Current Location")
+
+        // TODO: find parking around current user
+        Log.d("MapsActivity", "Reached \"find parking around current user\"")
+    }
+
+    /**
+     * Function to get current user's location
+     * Returns null if the location couldn't be established
+     */
+    fun getLocation() = async<Location?> {
+        // Get location of user
+        Log.d("MapsActivity", "Attempting to show current location")
+        var location: Location?
+        try {
+            Log.d("MapsActivity", "Getting location....")
+            location = async {
+                //return@async Tasks.await(fusedLocationClient.lastLocation)
+                return@async Location("Test")
+            }.await()
+            Log.d("MapsActivity", "Returned from awaited task to retrieve location")
+        }
+        catch(e: SecurityException) {
+            Log.d("MapsActivity", "Failed to retrieve current location due to SecurityException")
+            Log.e("MainActivity", "SecurityException when trying to retrieve location", e)
+            return@async null
+        }
+
+        // Return the location, if obtained correctly
+        if (location != null) {
+            Log.d("MapsActivity", "Successfully retrieved current location")
+            return@async location
+        }
+
+        //Otherwise, return null
+        Log.d("MapsActivity", "Failed to retrieve current location")
+        return@async null
+    }
+
+    /**
+     * Function to move the camera to a given location and zoom to the given amount
+     */
+    fun setCamera(location: LatLng, zoom: Float, label: String) {
+        Log.d("MapsActivity", "Marking location at (" + location.latitude + ", " + location.longitude + ")")
+        mMap.addMarker(MarkerOptions().position(location).title(label))
+        Log.d("MainActivity", "Moving camera to location")
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, zoom))
     }
 
 }
