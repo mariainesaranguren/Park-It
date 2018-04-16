@@ -103,16 +103,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
                             // Query for nearby parking spots
                             Log.d("showLocation", "preparing query")
-                            val currLocation = ParseGeoPoint(position.latitude, position.longitude)       // Creating a GeoPoint with the desired point
+                            val currLocation = ParseGeoPoint(position.latitude, position.longitude)     // Creating a GeoPoint with the desired point
                             val query = ParseQuery.getQuery<ParseObject>("parking_lot")      // Creating a Query so that it can search in the DB
-                            query.whereNear("position", currLocation)                               // Query locations near that point within the field named parking_space
-                            query.limit = 8                                                              // Setting a query limit, to avoid an excess of results
-                            Log.d("showLocation", "going to query now")                       // Then start the query with a Callback
+                            query.whereNear("position", currLocation)                             // Query locations near that point within the field named parking_lot
+                            query.limit = 8                                                            // Setting a query limit, to avoid an excess of results
+                            Log.d("showLocation", "going to query now")                     // Then start the query with a Callback
                             query.findInBackground { objects, e ->
-                                // Clear map
+                                // Clear results map
                                 queryResults.clear()
                                 Log.d("showLocation", "done querying")
                                 Log.d("showLocation", "error: ", e)
+                                // Add markers for each query result
                                 for (i in objects.indices) {
                                     val queryLatitude = objects[i].getParseGeoPoint("position").latitude
                                     val queryLongitude = objects[i].getParseGeoPoint("position").longitude
