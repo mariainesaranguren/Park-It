@@ -16,9 +16,16 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
-import com.parse.Parse
+import com.parse.*
+import com.parse.ParseObject
+import com.parse.FindCallback
+import com.parse.ParseQuery
+import com.parse.ParseGeoPoint
+import com.parse.ParseException
 
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
@@ -29,6 +36,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         private const val findParkingZoom: Float = 15.0f
         private val notreDamePosition: LatLng = LatLng(41.7056, -86.2353)
         private const val MY_PERMISSIONS_REQUEST_LOCATION: Int = 1
+        private val queryResults:HashMap<Marker, LatLng> = HashMap()
     }
     // Zoom levels
     //    * 10: City
@@ -39,6 +47,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Parse.initialize(this)
+
         setContentView(R.layout.activity_maps)
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         val mapFragment = supportFragmentManager
@@ -89,6 +98,31 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                             Log.d("showLocation", "Position set to current location")
                             Log.v("showLocation", position.toString())
                             setCamera(position, findParkingZoom)
+                            Log.d("showLocation", "current location "+position.latitude.toString()+" "+position.longitude.toString())
+
+
+                            // Query for nearby parking spots
+                            Log.d("showLocation", "preparing query")
+                            val currLocation = ParseGeoPoint(position.latitude, position.longitude)       // Creating a GeoPoint with the desired point
+                            val query = ParseQuery.getQuery<ParseObject>("parking_lot")      // Creating a Query so that it can search in the DB
+                            query.whereNear("position", currLocation)                               // Query locations near that point within the field named parking_space
+                            query.limit = 8                                                              // Setting a query limit, to avoid an excess of results
+                            Log.d("showLocation", "going to query now")                       // Then start the query with a Callback
+                            query.findInBackground { objects, e ->
+                                // Clear map
+                                queryResults.clear()
+                                Log.d("showLocation", "done querying")
+                                Log.d("showLocation", "error: ", e)
+                                for (i in objects.indices) {
+                                    val queryLatitude = objects[i].getParseGeoPoint("position").latitude
+                                    val queryLongitude = objects[i].getParseGeoPoint("position").longitude
+                                    val queryTitle = objects[i].getString("name")
+                                    Log.d("showLocation()", "query Lat"+queryLatitude.toString()+" query Long"+queryLongitude.toString())
+                                    var parking_spot = LatLng(queryLatitude, queryLongitude)
+                                    val marker = mMap.addMarker(MarkerOptions().position(parking_spot).title(queryTitle))
+                                    queryResults.put(marker, parking_spot)
+                                }
+                            }
                         }
                     }
                     .addOnFailureListener {
@@ -99,7 +133,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     fun setCamera(location: LatLng, zoom: Float) {
-        mMap.addMarker(MarkerOptions().position(location).title("Notre Dame"))
+        mMap.addMarker(MarkerOptions().position(location).title("Your location").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)))
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, zoom))
     }
 
