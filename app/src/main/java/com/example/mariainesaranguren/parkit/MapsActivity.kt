@@ -4,13 +4,16 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.util.Log
 import android.location.Location
+import android.net.Uri
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
+import android.view.View
 import android.widget.Toast
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import android.support.v4.app.FragmentTransaction
 
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -26,9 +29,10 @@ import com.parse.FindCallback
 import com.parse.ParseQuery
 import com.parse.ParseGeoPoint
 import com.parse.ParseException
+import kotlinx.android.synthetic.main.activity_maps.*
 
 
-class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
+class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFragment.OnFragmentInteractionListener, GoogleMap.OnMarkerClickListener {
 
     private lateinit var mMap: GoogleMap
     private lateinit var fusedLocationClient: FusedLocationProviderClient
@@ -36,7 +40,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         private const val findParkingZoom: Float = 15.0f
         private val notreDamePosition: LatLng = LatLng(41.7056, -86.2353)
         private const val MY_PERMISSIONS_REQUEST_LOCATION: Int = 1
-        private val queryResults:HashMap<Marker, LatLng> = HashMap()
+        private val queryResults:HashMap<Marker, ParkingLocation> = HashMap()
     }
     // Zoom levels
     //    * 10: City
@@ -71,6 +75,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
         showLocation()
+        mMap.setOnMarkerClickListener(this)
     }
 
     fun showLocation(){
@@ -118,10 +123,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                                     val queryLatitude = objects[i].getParseGeoPoint("position").latitude
                                     val queryLongitude = objects[i].getParseGeoPoint("position").longitude
                                     val queryTitle = objects[i].getString("name")
+                                    val queryAddr = objects[i].getString("address")
                                     Log.d("showLocation()", "query Lat"+queryLatitude.toString()+" query Long"+queryLongitude.toString())
                                     var parking_spot = LatLng(queryLatitude, queryLongitude)
                                     val marker = mMap.addMarker(MarkerOptions().position(parking_spot).title(queryTitle))
-                                    queryResults.put(marker, parking_spot)
+
+                                    val newParkingLocation = ParkingLot(queryTitle, queryAddr, parking_spot)
+                                    queryResults.put(marker, newParkingLocation)
                                 }
                             }
                         }
@@ -174,6 +182,33 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 // Ignore all other requests.
             }
         }
+    }
+
+    // Function called when a map marker is clicked
+    override fun onMarkerClick(marker: Marker?): Boolean {
+        val location: ParkingLocation? = queryResults.get(marker)
+        if(marker != null && location != null) {
+            prepareForNavigation(location)
+            return true
+        }
+
+        // Returning false indicates that this handler is not meant to handle this click
+        return false
+    }
+
+    // Function called to have the map show the navigation route
+    override fun prepareForNavigation(location: ParkingLocation) {
+        Log.i("MapsActivity", "Starting StartNavigationFragment. location={${location.toString()}}")
+        bottom_fragment.setVisibility(View.VISIBLE);
+
+        val fragment = StartNavigationFragment.newInstance(location)
+        getSupportFragmentManager().beginTransaction()
+                .add(bottom_fragment.id, fragment, "StartNav").commit();
+    }
+
+    //Function called to have the map begin navigation
+    override fun beginNavigation(location: ParkingLocation) {
+        Log.i("MapsActivity", "Beginning navigation to location={${location.toString()}}")
     }
 
 }
