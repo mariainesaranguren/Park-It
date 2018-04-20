@@ -1,6 +1,7 @@
 package com.example.mariainesaranguren.parkit
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.util.Log
 import android.location.Location
@@ -36,6 +37,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
 
     private lateinit var mMap: GoogleMap
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var currentLocation: LatLng
     companion object {
         private const val findParkingZoom: Float = 15.0f
         private val notreDamePosition: LatLng = LatLng(41.7056, -86.2353)
@@ -100,6 +102,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
                         // Got last known location. In some rare situations this can be null.
                         if (location != null) {
                             position = LatLng(location.getLatitude(), location.getLongitude())
+                            currentLocation = position
                             Log.d("showLocation", "Position set to current location")
                             Log.v("showLocation", position.toString())
                             setCamera(position, findParkingZoom)
@@ -162,6 +165,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
                                 // Got last known location. In some rare situations this can be null.
                                 if (location != null) {
                                     position = LatLng(location.getLatitude(), location.getLongitude())
+                                    currentLocation = position
                                     Log.v("onRequestPer", position.toString())
                                     setCamera(position, findParkingZoom)
                                 }
@@ -198,17 +202,34 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
 
     // Function called to have the map show the navigation route
     override fun prepareForNavigation(location: ParkingLocation) {
+
+        // Start StartnavigationFragment
         Log.i("MapsActivity", "Starting StartNavigationFragment. location={${location.toString()}}")
         bottom_fragment.setVisibility(View.VISIBLE);
-
         val fragment = StartNavigationFragment.newInstance(location)
         getSupportFragmentManager().beginTransaction()
                 .add(bottom_fragment.id, fragment, "StartNav").commit();
+        
     }
 
     //Function called to have the map begin navigation
     override fun beginNavigation(location: ParkingLocation) {
         Log.i("MapsActivity", "Beginning navigation to location={${location.toString()}}")
+
+        // Build directions URL so we can launch Google Maps
+        var url: String = "https://www.google.com/maps/dir/?api=1&origin=${currentLocation.latitude},${currentLocation.longitude}&destination=${location.getLatLng().latitude},${location.getLatLng().longitude}"
+
+        // Start intent
+        var intent: Intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        if (intent.resolveActivity(getPackageManager()) != null) {
+            startActivity(intent);
+        }
+        else {
+            val toast = Toast.makeText(this, "Unable to open directions. No appropriate apps installed", Toast.LENGTH_SHORT)
+            toast.show()
+            Log.e("MapsActivity", "Failed to show directions. No apps installed.")
+        }
+
     }
 
 }
