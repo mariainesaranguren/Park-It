@@ -33,7 +33,7 @@ import com.parse.ParseException
 import kotlinx.android.synthetic.main.activity_maps.*
 
 
-class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFragment.OnFragmentInteractionListener, GoogleMap.OnMarkerClickListener {
+class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFragment.OnFragmentInteractionListener, GoogleMap.OnMarkerClickListener, ParkingResultsFragment.OnListFragmentInteractionListener {
 
     private lateinit var mMap: GoogleMap
     private lateinit var fusedLocationClient: FusedLocationProviderClient
@@ -42,13 +42,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
         private const val findParkingZoom: Float = 15.0f
         private val notreDamePosition: LatLng = LatLng(41.7056, -86.2353)
         private const val MY_PERMISSIONS_REQUEST_LOCATION: Int = 1
-        private val queryResults:HashMap<Marker, ParkingLocation> = HashMap()
+        private val queryResultsMarkers:HashMap<Marker, ParkingLocation> = HashMap()
+        private val queryResultsParkingLocation: ArrayList<ParkingLocation> = ArrayList()
     }
     // Zoom levels
     //    * 10: City
     //    * 15: Streets
     //    * 20: Buildings
 
+    override fun onListFragmentIteraction(item: ParkingLocation) {
+        Log.i("MapsActivity", "onListFragmentInteraction, on item: "+item.getLocationName())
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -118,7 +122,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
                             Log.d("showLocation", "going to query now")                     // Then start the query with a Callback
                             query.findInBackground { objects, e ->
                                 // Clear results map
-                                queryResults.clear()
+                                queryResultsMarkers.clear()
                                 Log.d("showLocation", "done querying")
                                 Log.d("showLocation", "error: ", e)
                                 // Add markers for each query result
@@ -132,8 +136,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
                                     val marker = mMap.addMarker(MarkerOptions().position(parking_spot).title(queryTitle))
 
                                     val newParkingLocation = ParkingLot(queryTitle, queryAddr, parking_spot)
-                                    queryResults.put(marker, newParkingLocation)
+                                    queryResultsMarkers.put(marker, newParkingLocation)
+                                    queryResultsParkingLocation.add(newParkingLocation)
                                 }
+                                showParkingSpotsList()
                             }
                         }
                     }
@@ -170,6 +176,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
                                     setCamera(position, findParkingZoom)
                                 }
                                 Log.d("onRequestPer", "Position set to current location")
+
+                                // TODO Add code here
                             }
                             .addOnFailureListener {
                                 val toast = Toast.makeText(this, "Unable to get current location", Toast.LENGTH_SHORT)
@@ -188,9 +196,19 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
         }
     }
 
+    fun showParkingSpotsList() {
+        // Start ItemFragment
+        Log.i("MapsActivity", "Starting ItemFragment")
+        bottom_fragment.setVisibility(View.VISIBLE);
+
+        val fragment = ParkingResultsFragment.newInstance(1, queryResultsParkingLocation)
+        getSupportFragmentManager().beginTransaction()
+                .add(bottom_fragment.id, fragment, "StartNav").commit();
+    }
+
     // Function called when a map marker is clicked
     override fun onMarkerClick(marker: Marker?): Boolean {
-        val location: ParkingLocation? = queryResults.get(marker)
+        val location: ParkingLocation? = queryResultsMarkers.get(marker)
         if(marker != null && location != null) {
             prepareForNavigation(location)
             return true
@@ -202,7 +220,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
 
     // Function called to have the map show the navigation route
     override fun prepareForNavigation(location: ParkingLocation) {
-
         // Start StartnavigationFragment
         Log.i("MapsActivity", "Starting StartNavigationFragment. location={${location.toString()}}")
         bottom_fragment.setVisibility(View.VISIBLE);
