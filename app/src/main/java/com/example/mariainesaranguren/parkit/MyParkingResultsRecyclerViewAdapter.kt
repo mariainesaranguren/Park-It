@@ -41,7 +41,7 @@ class MyParkingResultsRecyclerViewAdapter(
     override fun onBindViewHolder(holder: ViewHolder, i: Int) {
         val item = parkingSpots.get(i)
         holder.mIdView.text = item.getLocationName()
-        holder.mContentView.text = item.getLocationAddr()
+//        holder.mContentView.text = item.getLocationAddr()
         holder.mContentView.text = "" //item.getLocationAddr()
 
         with(holder.mView) {

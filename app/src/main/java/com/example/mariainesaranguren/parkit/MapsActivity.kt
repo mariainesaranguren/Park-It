@@ -15,6 +15,7 @@ import android.widget.Toast
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import android.support.v4.app.FragmentTransaction
+import android.widget.LinearLayout
 
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -52,6 +53,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
 
     override fun onListFragmentIteraction(item: ParkingLocation) {
         Log.i("MapsActivity", "onListFragmentInteraction, on item: "+item.getLocationName())
+
+        // Move camera to selected destination
+        setCamera(item.getLatLng(), findParkingZoom)
+
+        // Allow user to start trip
+        prepareForNavigation(item)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -109,6 +116,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
                             currentLocation = position
                             Log.d("showLocation", "Position set to current location")
                             Log.v("showLocation", position.toString())
+                            mMap.addMarker(MarkerOptions().position(currentLocation).title("Your location").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)))
                             setCamera(position, findParkingZoom)
                             Log.d("showLocation", "current location "+position.latitude.toString()+" "+position.longitude.toString())
 
@@ -150,8 +158,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
         }
     }
 
+    override fun cancelNavigation() {
+        showParkingSpotsList()
+    }
+
     fun setCamera(location: LatLng, zoom: Float) {
-        mMap.addMarker(MarkerOptions().position(location).title("Your location").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)))
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, zoom))
     }
 
@@ -170,10 +181,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
                             .addOnSuccessListener { location: Location? ->
                                 // Got last known location. In some rare situations this can be null.
                                 if (location != null) {
-                                    position = LatLng(location.getLatitude(), location.getLongitude())
-                                    currentLocation = position
-                                    Log.v("onRequestPer", position.toString())
-                                    setCamera(position, findParkingZoom)
+                                    currentLocation = LatLng(location.getLatitude(), location.getLongitude())
+                                    Log.v("onRequestPer", currentLocation.toString())
+                                    mMap.addMarker(MarkerOptions().position(currentLocation).title("Your location").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)))
+                                    setCamera(currentLocation, findParkingZoom)
                                 }
                                 Log.d("onRequestPer", "Position set to current location")
 
@@ -183,7 +194,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
                                 val toast = Toast.makeText(this, "Unable to get current location", Toast.LENGTH_SHORT)
                                 toast.show()
                             }
-
                 } else {
                     // Permission denied
                 }
@@ -197,13 +207,23 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
     }
 
     fun showParkingSpotsList() {
-        // Start ItemFragment
-        Log.i("MapsActivity", "Starting ItemFragment")
+        Log.i("MapsActivity", "showParkingSpotsList")
+        top_frame.layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                2.0f
+        )
+
         bottom_fragment.setVisibility(View.VISIBLE);
+        bottom_fragment.layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1.0f
+        )
 
         val fragment = ParkingResultsFragment.newInstance(1, queryResultsParkingLocation)
         getSupportFragmentManager().beginTransaction()
-                .add(bottom_fragment.id, fragment, "StartNav").commit();
+                .replace(bottom_fragment.id, fragment, "StartNav").commit();
     }
 
     // Function called when a map marker is clicked
@@ -222,11 +242,25 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
     override fun prepareForNavigation(location: ParkingLocation) {
         // Start StartnavigationFragment
         Log.i("MapsActivity", "Starting StartNavigationFragment. location={${location.toString()}}")
+
+        top_frame.layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                1.0f
+        )
+
         bottom_fragment.setVisibility(View.VISIBLE);
+        bottom_fragment.layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                0.0f
+        )
+
         val fragment = StartNavigationFragment.newInstance(location)
         getSupportFragmentManager().beginTransaction()
-                .add(bottom_fragment.id, fragment, "StartNav").commit();
-        
+                .replace(bottom_fragment.id, fragment, "StartNav").commit();
+
+
     }
 
     //Function called to have the map begin navigation

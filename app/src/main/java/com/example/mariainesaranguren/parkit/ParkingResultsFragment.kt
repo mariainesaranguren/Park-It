@@ -61,6 +61,8 @@ class ParkingResultsFragment : Fragment() {
         listener = null
     }
 
+
+
     /**
      * This interface must be implemented by activities that contain this
      * fragment to allow an interaction in this fragment to be communicated
@@ -78,12 +80,9 @@ class ParkingResultsFragment : Fragment() {
     }
 
     companion object {
-
-        // TODO: Customize parameter argument names
         const val ARG_COLUMN_COUNT = "column-count"
         const val ARG_PARKING_SPACES_ARRAY_LIST = "parking-spaces-array-list"
 
-        // TODO: Customize parameter initialization
         @JvmStatic
         fun newInstance(columnCount: Int, parkingSpacesList : ArrayList<ParkingLocation>) =
                 ParkingResultsFragment().apply {
