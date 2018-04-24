@@ -114,6 +114,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
                         if (location != null) {
                             position = LatLng(location.getLatitude(), location.getLongitude())
                             currentLocation = position
+
+                            // Add on click listener for fab
+                            fab.setOnClickListener {
+                                setCamera(currentLocation, findParkingZoom)
+                            }
+
                             Log.d("showLocation", "Position set to current location")
                             Log.v("showLocation", position.toString())
                             mMap.addMarker(MarkerOptions().position(currentLocation).title("Your location").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)))
@@ -182,6 +188,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
                                 // Got last known location. In some rare situations this can be null.
                                 if (location != null) {
                                     currentLocation = LatLng(location.getLatitude(), location.getLongitude())
+
+                                    // Add on click listener for fab
+                                    fab.setOnClickListener {
+                                        setCamera(currentLocation, findParkingZoom)
+                                    }
+
                                     Log.v("onRequestPer", currentLocation.toString())
                                     mMap.addMarker(MarkerOptions().position(currentLocation).title("Your location").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)))
                                     setCamera(currentLocation, findParkingZoom)
