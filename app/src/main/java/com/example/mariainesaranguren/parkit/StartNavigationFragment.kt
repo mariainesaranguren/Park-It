@@ -34,6 +34,7 @@ class StartNavigationFragment : Fragment() {
 
     // Fragment components
     private lateinit var start_button: Button
+    private lateinit var cancel_trip_button: Button
     private lateinit var lot_name_textview: TextView
     private lateinit var lot_addr_textview: TextView
 
@@ -60,6 +61,13 @@ class StartNavigationFragment : Fragment() {
         start_button.setOnClickListener {
             Log.d("StartNavigationFragment", "Start nav button clicked")
             listener?.beginNavigation(parking_location)
+        }
+
+        cancel_trip_button = view.cancel_button
+        // Add onClick listener for button
+        cancel_trip_button.setOnClickListener {
+            Log.d("StartNavigationFragment", "Start nav button clicked")
+            listener?.cancelNavigation()
         }
 
         // Inflate the layout for this fragment
@@ -95,6 +103,7 @@ class StartNavigationFragment : Fragment() {
         // TODO: Update argument type and name
         fun prepareForNavigation(location: ParkingLocation)
         fun beginNavigation(location: ParkingLocation)
+        fun cancelNavigation()
     }
 
     companion object {
