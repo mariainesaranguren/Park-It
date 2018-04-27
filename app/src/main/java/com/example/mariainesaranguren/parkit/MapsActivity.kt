@@ -15,7 +15,14 @@ import android.widget.Toast
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import android.support.v4.app.FragmentTransaction
+import android.view.Menu
+import android.view.MenuItem
 import android.widget.LinearLayout
+import com.google.android.gms.common.GooglePlayServicesNotAvailableException
+import com.google.android.gms.common.GooglePlayServicesRepairableException
+import com.google.android.gms.common.api.Status
+import com.google.android.gms.location.places.Place
+import com.google.android.gms.location.places.ui.PlaceAutocomplete
 
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -45,6 +52,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
         private const val MY_PERMISSIONS_REQUEST_LOCATION: Int = 1
         private val queryResultsMarkers:HashMap<Marker, ParkingLocation> = HashMap()
         private val queryResultsParkingLocation: ArrayList<ParkingLocation> = ArrayList()
+        private const val PLACE_AUTOCOMPLETE_REQUEST_CODE = 1
     }
     // Zoom levels
     //    * 10: City
@@ -75,6 +83,27 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
     }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.menu, menu)
+        return super.onCreateOptionsMenu(menu)
+    }
+
+    // handle button activities
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        val id = item.getItemId()
+
+        if (id == R.id.search_button) {
+            // Start the search activity
+            Log.i("MapsActivity", "Starting LocationSearchActivity...")
+            //val intent = Intent(this, LocationSearchActivity::class.java)
+            //startActivity(intent)
+            findPlace()
+
+        }
+        return super.onOptionsItemSelected(item)
+    }
+
 
     /**
      * Manipulates the map once available.
@@ -293,6 +322,39 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
             Log.e("MapsActivity", "Failed to show directions. No apps installed.")
         }
 
+    }
+
+    fun findPlace() {
+        try {
+            val intent: Intent =
+                    PlaceAutocomplete.IntentBuilder(PlaceAutocomplete.MODE_FULLSCREEN)
+                            .build(this);
+            startActivityForResult(intent, PLACE_AUTOCOMPLETE_REQUEST_CODE);
+        } catch (e: GooglePlayServicesRepairableException) {
+            // TODO: Handle the error.
+        } catch (e: GooglePlayServicesNotAvailableException) {
+            // TODO: Handle the error.
+        }
+    }
+
+    // A place has been received; use requestCode to track the request.
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent) {
+        if (requestCode == PLACE_AUTOCOMPLETE_REQUEST_CODE) {
+            if (resultCode == RESULT_OK) {
+                var place: Place = PlaceAutocomplete.getPlace(this, data)
+                Log.i("MapsActivity", "Selected place: " + place.getName());
+                var resultLocation: OtherLocation = OtherLocation(place.name.toString(), place.address.toString(), place.latLng)
+                setCamera(resultLocation.getLatLng(), findParkingZoom)
+                prepareForNavigation(resultLocation)
+            } else if (resultCode == PlaceAutocomplete.RESULT_ERROR) {
+                var status: Status = PlaceAutocomplete.getStatus(this, data)
+                // TODO: Handle the error.
+                Log.e("MapsActivity", status.getStatusMessage());
+
+            } else if (resultCode == RESULT_CANCELED) {
+                // The user canceled the operation.
+            }
+        }
     }
 
 }
