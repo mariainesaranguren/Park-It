@@ -134,15 +134,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
 
         } else {
             // Permission has already been granted
-            var position: LatLng = notreDamePosition
-            Log.d("showLocation", "Position set to ND")
-
             fusedLocationClient.lastLocation
                     .addOnSuccessListener { location: Location? ->
                         // Got last known location. In some rare situations this can be null.
                         if (location != null) {
-                            position = LatLng(location.getLatitude(), location.getLongitude())
-                            currentLocation = position
+                            currentLocation= LatLng(location.getLatitude(), location.getLongitude())
 
                             // Add on click listener for fab
                             fab.setOnClickListener {
@@ -150,40 +146,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
                             }
 
                             Log.d("showLocation", "Position set to current location")
-                            Log.v("showLocation", position.toString())
+                            Log.v("showLocation", currentLocation.toString())
                             mMap.addMarker(MarkerOptions().position(currentLocation).title("Your location").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)))
-                            setCamera(position, findParkingZoom)
-                            Log.d("showLocation", "current location "+position.latitude.toString()+" "+position.longitude.toString())
+                            setCamera(currentLocation, findParkingZoom)
+                            Log.d("showLocation", "current location "+currentLocation.latitude.toString()+" "+currentLocation.longitude.toString())
 
-
-                            // Query for nearby parking spots
-                            Log.d("showLocation", "preparing query")
-                            val currLocation = ParseGeoPoint(position.latitude, position.longitude)     // Creating a GeoPoint with the desired point
-                            val query = ParseQuery.getQuery<ParseObject>("parking_lot")      // Creating a Query so that it can search in the DB
-                            query.whereNear("position", currLocation)                             // Query locations near that point within the field named parking_lot
-                            query.limit = 8                                                            // Setting a query limit, to avoid an excess of results
-                            Log.d("showLocation", "going to query now")                     // Then start the query with a Callback
-                            query.findInBackground { objects, e ->
-                                // Clear results map
-                                queryResultsMarkers.clear()
-                                Log.d("showLocation", "done querying")
-                                Log.d("showLocation", "error: ", e)
-                                // Add markers for each query result
-                                for (i in objects.indices) {
-                                    val queryLatitude = objects[i].getParseGeoPoint("position").latitude
-                                    val queryLongitude = objects[i].getParseGeoPoint("position").longitude
-                                    val queryTitle = objects[i].getString("name")
-                                    val queryAddr = objects[i].getString("address")
-                                    Log.d("showLocation()", "query Lat"+queryLatitude.toString()+" query Long"+queryLongitude.toString())
-                                    var parking_spot = LatLng(queryLatitude, queryLongitude)
-                                    val marker = mMap.addMarker(MarkerOptions().position(parking_spot).title(queryTitle))
-
-                                    val newParkingLocation = ParkingLot(queryTitle, queryAddr, parking_spot)
-                                    queryResultsMarkers.put(marker, newParkingLocation)
-                                    queryResultsParkingLocation.add(newParkingLocation)
-                                }
-                                showParkingSpotsList()
-                            }
+                            // Plot the nearby parking spots on the map
+                            plotNearbySpots()
                         }
                     }
                     .addOnFailureListener {
@@ -205,8 +174,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
                                             permissions: Array<String>, grantResults: IntArray) {
         when (requestCode) {
             MY_PERMISSIONS_REQUEST_LOCATION -> {
-                var position: LatLng = notreDamePosition
-                Log.d("onRequestPer", "Position set to ND")
                 Log.d("onRequestPer", "Permission granted")
                 // If request is cancelled, the result arrays are empty.
                 if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
@@ -226,6 +193,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
                                     Log.v("onRequestPer", currentLocation.toString())
                                     mMap.addMarker(MarkerOptions().position(currentLocation).title("Your location").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)))
                                     setCamera(currentLocation, findParkingZoom)
+
+                                    // Plot nearby parking spots
+                                    plotNearbySpots()
                                 }
                                 Log.d("onRequestPer", "Position set to current location")
 
@@ -237,6 +207,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
                             }
                 } else {
                     // Permission denied
+                    val toast = Toast.makeText(this, "Unable to get current location", Toast.LENGTH_SHORT)
+                    toast.show()
                 }
                 return
             }
@@ -244,6 +216,37 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
             else -> {
                 // Ignore all other requests.
             }
+        }
+    }
+
+    fun plotNearbySpots() {
+        // Query for nearby parking spots
+        Log.d("showLocation", "preparing query")
+        val currLocation = ParseGeoPoint(currentLocation.latitude, currentLocation.longitude)     // Creating a GeoPoint with the desired point
+        val query = ParseQuery.getQuery<ParseObject>("parking_lot")      // Creating a Query so that it can search in the DB
+        query.whereNear("position", currLocation)                             // Query locations near that point within the field named parking_lot
+        query.limit = 8                                                            // Setting a query limit, to avoid an excess of results
+        Log.d("showLocation", "going to query now")                     // Then start the query with a Callback
+        query.findInBackground { objects, e ->
+            // Clear results map
+            queryResultsMarkers.clear()
+            Log.d("showLocation", "done querying")
+            Log.d("showLocation", "error: ", e)
+            // Add markers for each query result
+            for (i in objects.indices) {
+                val queryLatitude = objects[i].getParseGeoPoint("position").latitude
+                val queryLongitude = objects[i].getParseGeoPoint("position").longitude
+                val queryTitle = objects[i].getString("name")
+                val queryAddr = objects[i].getString("address")
+                Log.d("showLocation()", "query Lat"+queryLatitude.toString()+" query Long"+queryLongitude.toString())
+                var parking_spot = LatLng(queryLatitude, queryLongitude)
+                val marker = mMap.addMarker(MarkerOptions().position(parking_spot).title(queryTitle))
+
+                val newParkingLocation = ParkingLot(queryTitle, queryAddr, parking_spot)
+                queryResultsMarkers.put(marker, newParkingLocation)
+                queryResultsParkingLocation.add(newParkingLocation)
+            }
+            showParkingSpotsList()
         }
     }
 
