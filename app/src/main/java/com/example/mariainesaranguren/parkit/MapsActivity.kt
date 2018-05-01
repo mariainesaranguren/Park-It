@@ -21,6 +21,9 @@ import android.widget.LinearLayout
 import com.google.android.gms.common.GooglePlayServicesNotAvailableException
 import com.google.android.gms.common.GooglePlayServicesRepairableException
 import com.google.android.gms.common.api.Status
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.places.Place
 import com.google.android.gms.location.places.ui.PlaceAutocomplete
 
@@ -46,9 +49,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
     private lateinit var mMap: GoogleMap
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var currentLocation: LatLng
+    private lateinit var currentLocationmarker: Marker
+    private var destination: ParkingLocation? = null
     companion object {
         private const val findParkingZoom: Float = 15.0f
-        private val notreDamePosition: LatLng = LatLng(41.7056, -86.2353)
         private const val MY_PERMISSIONS_REQUEST_LOCATION: Int = 1
         private val queryResultsMarkers:HashMap<Marker, ParkingLocation> = HashMap()
         private val queryResultsParkingLocation: ArrayList<ParkingLocation> = ArrayList()
@@ -147,9 +151,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
 
                             Log.d("showLocation", "Position set to current location")
                             Log.v("showLocation", currentLocation.toString())
-                            mMap.addMarker(MarkerOptions().position(currentLocation).title("Your location").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)))
+                            currentLocationmarker = mMap.addMarker(MarkerOptions().position(currentLocation).title("Your location").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)))
                             setCamera(currentLocation, findParkingZoom)
                             Log.d("showLocation", "current location "+currentLocation.latitude.toString()+" "+currentLocation.longitude.toString())
+
+                            registerLocationUpdateCallback()
 
                             // Plot the nearby parking spots on the map
                             plotNearbySpots()
@@ -191,8 +197,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
                                     }
 
                                     Log.v("onRequestPer", currentLocation.toString())
-                                    mMap.addMarker(MarkerOptions().position(currentLocation).title("Your location").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)))
+                                    currentLocationmarker = mMap.addMarker(MarkerOptions().position(currentLocation).title("Your location").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)))
                                     setCamera(currentLocation, findParkingZoom)
+
+                                    registerLocationUpdateCallback()
 
                                     // Plot nearby parking spots
                                     plotNearbySpots()
@@ -219,7 +227,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
         }
     }
 
-    fun plotNearbySpots() {
+    fun plotNearbySpots(show_list: Boolean = true) {
         // Query for nearby parking spots
         Log.d("showLocation", "preparing query")
         val currLocation = ParseGeoPoint(currentLocation.latitude, currentLocation.longitude)     // Creating a GeoPoint with the desired point
@@ -229,7 +237,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
         Log.d("showLocation", "going to query now")                     // Then start the query with a Callback
         query.findInBackground { objects, e ->
             // Clear results map
+            for (marker in queryResultsMarkers.keys) {
+                marker.remove()
+            }
             queryResultsMarkers.clear()
+            queryResultsParkingLocation.clear()
             Log.d("showLocation", "done querying")
             Log.d("showLocation", "error: ", e)
             // Add markers for each query result
@@ -246,7 +258,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
                 queryResultsMarkers.put(marker, newParkingLocation)
                 queryResultsParkingLocation.add(newParkingLocation)
             }
-            showParkingSpotsList()
+            if (show_list) {
+                showParkingSpotsList()
+            }
         }
     }
 
@@ -310,6 +324,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
     //Function called to have the map begin navigation
     override fun beginNavigation(location: ParkingLocation) {
         Log.i("MapsActivity", "Beginning navigation to location={${location.toString()}}")
+        destination = location
 
         // Build directions URL so we can launch Google Maps
         var url: String = "https://www.google.com/maps/dir/?api=1&origin=${currentLocation.latitude},${currentLocation.longitude}&destination=${location.getLatLng().latitude},${location.getLatLng().longitude}"
@@ -358,6 +373,34 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
                 // The user canceled the operation.
             }
         }
+    }
+
+    fun registerLocationUpdateCallback() {
+        // Create callback for location change
+        var req: LocationRequest = LocationRequest.create()
+        req.setInterval(5)
+        req.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
+
+        var locationCallback = object : LocationCallback() {
+            override fun onLocationResult(locationResult: LocationResult?) {
+                locationResult ?: return
+                for (location in locationResult.locations){
+                    Log.i("MapsActivity", "Inside location callback")
+
+                    // Remove user's current location marker
+                    currentLocationmarker.remove()
+
+                    // Update user's current location
+                    currentLocation = LatLng(location.latitude, location.longitude)
+                    currentLocationmarker = mMap.addMarker(MarkerOptions().position(currentLocation).title("Your location").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)))
+
+                    // Update query results markers
+                    plotNearbySpots(false)
+                }
+            }
+        }
+
+        fusedLocationClient.requestLocationUpdates(req, locationCallback, null)
     }
 
 }
