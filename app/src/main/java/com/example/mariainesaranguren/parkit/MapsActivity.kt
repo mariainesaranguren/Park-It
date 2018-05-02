@@ -396,6 +396,32 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, StartNavigationFra
 
                     // Update query results markers
                     plotNearbySpots(false)
+
+                    // Calculate distance
+                    var dest = destination
+                    if (dest != null) {
+                        var currentLoc = Location("loc")
+                        currentLoc.setLatitude(currentLocation.latitude);
+                        currentLoc.setLongitude(currentLocation.longitude);
+
+                        var destLatLng = dest.getLatLng()
+                        var destinationLoc = Location("destination")
+                        destinationLoc.setLatitude(destLatLng.latitude);
+                        destinationLoc.setLongitude(destLatLng.longitude);
+
+                        var dist = currentLoc.distanceTo(destinationLoc)
+                        Log.i("MapsActivity", "distance: "+dist.toString())
+
+                        // If below certain threshold, bring Park It to the foreground
+                        if (dist.compareTo(20) < 0) {    // Units: meters
+                            Log.i("MapsActivity", "dist < 20 ")
+                            destination = null
+                            var intent = Intent(this@MapsActivity, MapsActivity::class.java)
+                            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                            startActivity(intent)
+                            showParkingSpotsList()
+                        }
+                    }
                 }
             }
         }
