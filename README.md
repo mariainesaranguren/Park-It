@@ -18,3 +18,18 @@ All of the developer-created files are stored in /app/src/main/java/com/example/
 - **ParkingLot.kt**: Class implementing ParkingLocation that represents a parking lot to which the user might travel.  
 - **ParkingResultsFragment.kt**: Fragment to display a list of nearby parking locations.  
 - **StartNavigationFragment.kt**: Fragment to display a confirmation dialog where the user can begin navigation to a location.  
+
+## A Note on API Keys
+
+The API keys needed to run the app are not included in this source code. If you would like to use the application, you may add a file at /app/src/main/res/values/keys.xml and include the following code:
+
+```
+<resources>
+    <string name="google_maps_key">INSERT_KEY_HERE</string>
+    <string name="back4app_app_id">INSERT_APP_ID_HERE</string>
+    <string name="back4app_client_key">INSERT_KEY_HERE</string>
+    <string name="back4app_server_url">https://parseapi.back4app.com/</string>
+</resources>
+```
+
+Additionally, you may also ask one of the collaborators for their API keys and add them at the same location.
